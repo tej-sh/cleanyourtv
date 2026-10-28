@@ -293,8 +293,8 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             }
         }
         // The cache tile is an ordinary tile for ordering: movable, dockable, last until moved.
-        fresh.add(new Entry(Entry.CLEAR_CACHE, ctx.getString(R.string.clear_cache_tile),
-                new ComponentName(ctx, CacheCleaner.class.getName()), null,
+        fresh.add(new Entry(Entry.CLEAR_CACHE, ctx.getString(R.string.cleanup_tile),
+                new ComponentName(ctx, Cleanup.class.getName()), null,
                 ctx.getDrawable(R.drawable.ic_clear_cache), null, 0));
         Collections.sort(fresh, (a, b) -> {
             // The owner's own order first; tiles it does not know (new installs) follow by the rule below.
@@ -476,7 +476,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     /** Opens the tile's activity by explicit component, with no extras: a card can name nothing else. */
     private void launch(Entry e) {
         if (e.kind == Entry.CLEAR_CACHE) {
-            CacheCleaner.run(ctx);
+            Cleanup.run(ctx);
             return;
         }
         if (e.kind == Entry.HOME_SETTINGS) {

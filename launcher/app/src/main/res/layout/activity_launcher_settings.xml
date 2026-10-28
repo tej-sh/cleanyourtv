@@ -144,11 +144,5 @@
             style="@style/SettingsRow"
             android:layout_marginTop="18dp"
             android:text="@string/tv_settings" />
-
-        <TextView
-            android:id="@+id/clearCacheChoice"
-            style="@style/SettingsRow"
-            android:layout_marginTop="10dp"
-            android:text="@string/clear_all_caches" />
     </LinearLayout>
 </ScrollView>
