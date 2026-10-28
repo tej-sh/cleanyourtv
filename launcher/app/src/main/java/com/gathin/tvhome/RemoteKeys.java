@@ -185,6 +185,7 @@ final class RemoteKeys {
     static final String ACTION_CLEANUP = "cleanup";
     static final String ACTION_WIFI = "wifi";
     static final String ACTION_BLUETOOTH = "bluetooth";
+    static final String ACTION_KILL_FG = "killfg";
     static final String ACTION_NONE = "none";
     static final String ACTION_APP_PREFIX = "app:";
 
@@ -285,6 +286,32 @@ final class RemoteKeys {
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
             } catch (Exception ignored) {
                 ctx.startActivity(SystemSettings.intent(ctx, android.provider.Settings.ACTION_SETTINGS));
+            }
+        } else if (ACTION_KILL_FG.equals(action)) {
+            // Kill current foreground app (safe: never kills our launcher)
+            android.app.ActivityManager am = ctx.getSystemService(android.app.ActivityManager.class);
+            if (am != null) {
+                List<android.app.ActivityManager.RunningAppProcessInfo> processes = am.getRunningAppProcesses();
+                if (processes != null) {
+                    for (android.app.ActivityManager.RunningAppProcessInfo proc : processes) {
+                        if (proc.importance == android.app.ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND ||
+                            proc.importance == android.app.ActivityManager.RunningAppProcessInfo.IMPORTANCE_VISIBLE) {
+                            for (String pkg : proc.pkgList) {
+                                if (!pkg.equals(ctx.getPackageName()) && !pkg.equals("com.android.systemui")) {
+                                    am.killBackgroundProcesses(pkg);
+                                    android.widget.Toast.makeText(ctx, "Killed: " + pkg, android.widget.Toast.LENGTH_SHORT).show();
+                                    // Send back to home
+                                    Intent home = new Intent(Intent.ACTION_MAIN)
+                                            .addCategory(Intent.CATEGORY_HOME)
+                                            .setPackage(ctx.getPackageName())
+                                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
+                                    ctx.startActivity(home);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
             }
         } else if (action.startsWith(ACTION_APP_PREFIX)) {
             String pkg = action.substring(ACTION_APP_PREFIX.length()).trim();

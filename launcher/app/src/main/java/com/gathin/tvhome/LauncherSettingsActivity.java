@@ -184,6 +184,7 @@ public final class LauncherSettingsActivity extends Activity {
                 getString(R.string.remap_action_cleanup),
                 getString(R.string.remap_action_wifi),
                 getString(R.string.remap_action_bluetooth),
+                getString(R.string.remap_action_killfg),
                 getString(R.string.remap_action_app),
                 getString(R.string.remap_action_none)
         };
@@ -191,8 +192,9 @@ public final class LauncherSettingsActivity extends Activity {
                 : RemoteKeys.ACTION_CLEANUP.equals(current) ? 1
                 : RemoteKeys.ACTION_WIFI.equals(current) ? 2
                 : RemoteKeys.ACTION_BLUETOOTH.equals(current) ? 3
-                : current != null && current.startsWith(RemoteKeys.ACTION_APP_PREFIX) ? 4
-                : 5;
+                : RemoteKeys.ACTION_KILL_FG.equals(current) ? 4
+                : current != null && current.startsWith(RemoteKeys.ACTION_APP_PREFIX) ? 5
+                : 6;
         new AlertDialog.Builder(this)
                 .setTitle(titleRes)
                 .setSingleChoiceItems(options, checked, (dialog, which) -> {
@@ -206,6 +208,8 @@ public final class LauncherSettingsActivity extends Activity {
                     } else if (which == 3) {
                         saveButtonRemap(prefKey, RemoteKeys.ACTION_BLUETOOTH);
                     } else if (which == 4) {
+                        saveButtonRemap(prefKey, RemoteKeys.ACTION_KILL_FG);
+                    } else if (which == 5) {
                         showAppPickerForButton(prefKey);
                     } else {
                         saveButtonRemap(prefKey, RemoteKeys.ACTION_NONE);
@@ -278,6 +282,7 @@ public final class LauncherSettingsActivity extends Activity {
         if (RemoteKeys.ACTION_CLEANUP.equals(action)) return getString(R.string.remap_action_cleanup);
         if (RemoteKeys.ACTION_WIFI.equals(action)) return getString(R.string.remap_action_wifi);
         if (RemoteKeys.ACTION_BLUETOOTH.equals(action)) return getString(R.string.remap_action_bluetooth);
+        if (RemoteKeys.ACTION_KILL_FG.equals(action)) return getString(R.string.remap_action_killfg);
         if (action != null && action.startsWith(RemoteKeys.ACTION_APP_PREFIX)) {
             String pkg = action.substring(RemoteKeys.ACTION_APP_PREFIX.length());
             PackageManager pm = getPackageManager();
