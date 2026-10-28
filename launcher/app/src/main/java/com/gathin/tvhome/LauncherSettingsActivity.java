@@ -32,7 +32,9 @@ public final class LauncherSettingsActivity extends Activity {
     private final TextView[] dockChoices = new TextView[DOCK_OPACITIES.length];
     private TextView wallpaperChoice;
     private TextView miButtonChoice;
+    private TextView miButtonDoubleChoice;
     private TextView patchwallButtonChoice;
+    private TextView patchwallButtonDoubleChoice;
     private TextView animationsChoice;
     private TextView advancedChoice;
     private TextView followThemeChoice;
@@ -108,9 +110,15 @@ public final class LauncherSettingsActivity extends Activity {
         miButtonChoice = findViewById(R.id.miButtonChoice);
         miButtonChoice.setOnClickListener(v -> showButtonRemapPicker(
                 RemoteKeys.MI_BUTTON_KEY, RemoteKeys.ACTION_HOME, R.string.mi_button_title));
+        miButtonDoubleChoice = findViewById(R.id.miButtonDoubleChoice);
+        miButtonDoubleChoice.setOnClickListener(v -> showButtonRemapPicker(
+                RemoteKeys.MI_BUTTON_KEY + "_double", RemoteKeys.ACTION_NONE, R.string.mi_button_double_title));
         patchwallButtonChoice = findViewById(R.id.patchwallButtonChoice);
         patchwallButtonChoice.setOnClickListener(v -> showButtonRemapPicker(
                 RemoteKeys.PATCHWALL_BUTTON_KEY, RemoteKeys.ACTION_NONE, R.string.patchwall_button_title));
+        patchwallButtonDoubleChoice = findViewById(R.id.patchwallButtonDoubleChoice);
+        patchwallButtonDoubleChoice.setOnClickListener(v -> showButtonRemapPicker(
+                RemoteKeys.PATCHWALL_BUTTON_KEY + "_double", RemoteKeys.ACTION_NONE, R.string.patchwall_button_double_title));
         animationsChoice = findViewById(R.id.animationsChoice);
         animationsChoice.setOnClickListener(v -> {
             animations = !animations;
@@ -140,7 +148,9 @@ public final class LauncherSettingsActivity extends Activity {
                     .remove("advanced_effects").remove(Config.WALLPAPER_CHOICE_KEY)
                     .remove(Config.DOCK_OPACITY_KEY)
                     .remove(RemoteKeys.MI_BUTTON_KEY)
-                    .remove(RemoteKeys.PATCHWALL_BUTTON_KEY).commit();
+                    .remove(RemoteKeys.MI_BUTTON_KEY + "_double")
+                    .remove(RemoteKeys.PATCHWALL_BUTTON_KEY)
+                    .remove(RemoteKeys.PATCHWALL_BUTTON_KEY + "_double").commit();
             Config current = Config.load(this);
             columns = current.columns;
             rowsBelowDock = current.rowsBelowDock;
@@ -355,8 +365,12 @@ public final class LauncherSettingsActivity extends Activity {
                         : getString(R.string.wallpaper_theme_default)));
         String miCurrent = choices.getString(RemoteKeys.MI_BUTTON_KEY, RemoteKeys.ACTION_HOME);
         miButtonChoice.setText(getString(R.string.mi_button_state, formatRemapState(miCurrent)));
+        String miDoubleCurrent = choices.getString(RemoteKeys.MI_BUTTON_KEY + "_double", RemoteKeys.ACTION_NONE);
+        miButtonDoubleChoice.setText(getString(R.string.mi_button_double_state, formatRemapState(miDoubleCurrent)));
         String pwCurrent = choices.getString(RemoteKeys.PATCHWALL_BUTTON_KEY, RemoteKeys.ACTION_NONE);
         patchwallButtonChoice.setText(getString(R.string.patchwall_button_state, formatRemapState(pwCurrent)));
+        String pwDoubleCurrent = choices.getString(RemoteKeys.PATCHWALL_BUTTON_KEY + "_double", RemoteKeys.ACTION_NONE);
+        patchwallButtonDoubleChoice.setText(getString(R.string.patchwall_button_double_state, formatRemapState(pwDoubleCurrent)));
         followThemeChoice.setSelected(!hasOnTvChoices());
     }
 
@@ -364,7 +378,8 @@ public final class LauncherSettingsActivity extends Activity {
         return choices.contains("columns") || choices.contains(Config.ROWS_BELOW_DOCK_KEY)
                 || choices.contains("animations") || choices.contains("advanced_effects")
                 || choices.contains(Config.WALLPAPER_CHOICE_KEY) || choices.contains(Config.DOCK_OPACITY_KEY)
-                || choices.contains(RemoteKeys.MI_BUTTON_KEY) || choices.contains(RemoteKeys.PATCHWALL_BUTTON_KEY);
+                || choices.contains(RemoteKeys.MI_BUTTON_KEY) || choices.contains(RemoteKeys.MI_BUTTON_KEY + "_double")
+                || choices.contains(RemoteKeys.PATCHWALL_BUTTON_KEY) || choices.contains(RemoteKeys.PATCHWALL_BUTTON_KEY + "_double");
     }
 
     private void open(Intent intent) {

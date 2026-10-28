@@ -107,7 +107,17 @@
             android:layout_marginTop="10dp" />
 
         <TextView
+            android:id="@+id/miButtonDoubleChoice"
+            style="@style/SettingsRow"
+            android:layout_marginTop="10dp" />
+
+        <TextView
             android:id="@+id/patchwallButtonChoice"
+            style="@style/SettingsRow"
+            android:layout_marginTop="10dp" />
+
+        <TextView
+            android:id="@+id/patchwallButtonDoubleChoice"
             style="@style/SettingsRow"
             android:layout_marginTop="10dp" />
 

@@ -198,9 +198,12 @@ final class RemoteKeys {
         return code == 3 || code == KeyEvent.KEYCODE_BUTTON_5 || code == 170;
     }
 
+    private static final Map<String, Long> lastPressTimes = new HashMap<>();
+    private static final long DOUBLE_CLICK_WINDOW_MS = 400;
+
     /**
      * Handles Mi and PatchWall button remapping configured in Launcher settings.
-     * Returns true if the event was consumed by a user remap, false to fall back to default behaviour.
+     * Supports single click and double click actions.
      */
     static boolean handleRemappedButton(Context ctx, KeyEvent event) {
         String prefKey;
@@ -217,25 +220,59 @@ final class RemoteKeys {
 
         android.content.SharedPreferences prefs =
                 ctx.getSharedPreferences(Config.SETTINGS_NAME, Context.MODE_PRIVATE);
-        String action = prefs.getString(prefKey, defaultAction);
-        if (action == null || ACTION_NONE.equals(action)) {
+        
+        String singleAction = prefs.getString(prefKey, defaultAction);
+        String doubleAction = prefs.getString(prefKey + "_double", ACTION_NONE);
+
+        if ((singleAction == null || ACTION_NONE.equals(singleAction)) && 
+            (doubleAction == null || ACTION_NONE.equals(doubleAction))) {
             return false;
         }
 
         if (event.getAction() == KeyEvent.ACTION_UP && !event.isCanceled()) {
-            if (ACTION_HOME.equals(action)) {
-                Intent home = new Intent(Intent.ACTION_MAIN)
-                        .addCategory(Intent.CATEGORY_HOME)
-                        .setPackage(ctx.getPackageName())
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
-                ctx.startActivity(home);
-            } else if (ACTION_CLEANUP.equals(action)) {
-                Cleanup.run(ctx);
-            } else if (action.startsWith(ACTION_APP_PREFIX)) {
-                String pkg = action.substring(ACTION_APP_PREFIX.length()).trim();
-                if (!pkg.isEmpty()) launch(ctx, pkg);
+            long now = System.currentTimeMillis();
+            Long lastTime = lastPressTimes.get(prefKey);
+            
+            if (lastTime != null && (now - lastTime) <= DOUBLE_CLICK_WINDOW_MS) {
+                // Double click detected!
+                lastPressTimes.remove(prefKey);
+                if (doubleAction != null && !ACTION_NONE.equals(doubleAction)) {
+                    executeRemapAction(ctx, doubleAction);
+                }
+            } else {
+                // Single click: record time. To avoid waiting needlessly if no double click is bound,
+                // we can execute immediately if double click is 'none', or wait if double click is set.
+                lastPressTimes.put(prefKey, now);
+                if (doubleAction == null || ACTION_NONE.equals(doubleAction)) {
+                    executeRemapAction(ctx, singleAction);
+                } else {
+                    // Slight delay check or execute single click after window if no second click arrives
+                    new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                        Long t = lastPressTimes.get(prefKey);
+                        if (t != null && t == now) {
+                            lastPressTimes.remove(prefKey);
+                            executeRemapAction(ctx, singleAction);
+                        }
+                    }, DOUBLE_CLICK_WINDOW_MS);
+                }
             }
         }
         return true;
+    }
+
+    private static void executeRemapAction(Context ctx, String action) {
+        if (action == null || ACTION_NONE.equals(action)) return;
+        if (ACTION_HOME.equals(action)) {
+            Intent home = new Intent(Intent.ACTION_MAIN)
+                    .addCategory(Intent.CATEGORY_HOME)
+                    .setPackage(ctx.getPackageName())
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
+            ctx.startActivity(home);
+        } else if (ACTION_CLEANUP.equals(action)) {
+            Cleanup.run(ctx);
+        } else if (action.startsWith(ACTION_APP_PREFIX)) {
+            String pkg = action.substring(ACTION_APP_PREFIX.length()).trim();
+            if (!pkg.isEmpty()) launch(ctx, pkg);
+        }
     }
 }

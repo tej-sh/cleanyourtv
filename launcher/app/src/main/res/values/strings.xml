@@ -69,7 +69,11 @@
     <string name="clearing_cache">Clearing cache…</string>
     <string name="button_remap_label">Button remap</string>
     <string name="mi_button_state">Mi button: %1$s</string>
+    <string name="mi_button_double_state">Mi button (Double): %1$s</string>
     <string name="patchwall_button_state">PatchWall button: %1$s</string>
+    <string name="patchwall_button_double_state">PatchWall button (Double): %1$s</string>
+    <string name="mi_button_double_title">Mi button (Double click)</string>
+    <string name="patchwall_button_double_title">PatchWall button (Double click)</string>
     <string name="mi_button_title">Mi button</string>
     <string name="patchwall_button_title">PatchWall button</string>
     <string name="remap_action_home">Open Home</string>
