@@ -17,14 +17,16 @@ final class CacheCleaner {
     }
 
     /** Blocking; call off the main thread. */
-    static boolean clear(Context app) {
+    /** Returns null on success, else a short reason. */
+    static String clear(Context app) {
         File tmp = new File(app.getCacheDir(), "clear.tmp");
         try (FileOutputStream out = new FileOutputStream(tmp)) {
             StorageManager sm = app.getSystemService(StorageManager.class);
             sm.allocateBytes(out.getFD(), sm.getAllocatableBytes(StorageManager.UUID_DEFAULT));
-            return true;
+            return null;
         } catch (IOException | RuntimeException e) {
-            return false;
+            android.util.Log.w("CacheCleaner", "clear failed", e);
+            return e.getClass().getSimpleName() + ": " + e.getMessage();
         } finally {
             tmp.delete();
         }

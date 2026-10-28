@@ -16,7 +16,9 @@ final class Cleanup {
         Toast.makeText(app, R.string.cleaning_up, Toast.LENGTH_SHORT).show();
         new Thread(() -> {
             BackgroundKiller.killAll(app);
-            final int msg = CacheCleaner.clear(app) ? R.string.cleaned_up : R.string.not_available;
+            String err = CacheCleaner.clear(app);
+            final String msg = err == null ? app.getString(R.string.cleaned_up)
+                    : app.getString(R.string.cleanup_partial, err);
             ui.post(() -> Toast.makeText(app, msg, Toast.LENGTH_LONG).show());
         }).start();
     }

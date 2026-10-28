@@ -64,6 +64,7 @@
     <string name="cleanup_tile">Clean up</string>
     <string name="cleaning_up">Cleaning up…</string>
     <string name="cleaned_up">Cleaned up</string>
+    <string name="cleanup_partial">Apps stopped, caches not cleared: %1$s</string>
     <string name="quick_picture">Display</string>
     <string name="quick_network">Network</string>
     <string name="quick_apps">Apps</string>
