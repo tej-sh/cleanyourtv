@@ -28,6 +28,8 @@ final class RemoteKeys {
 
     /** How long a button is held before its "hold:" entry wins (Android's long-press timeout). */
     static final long HOLD_MS = 500;
+    /** Master switch for every remap below; off keeps the helpers from filtering keys, so buttons behave stock. */
+    static final String BUTTON_REMAP_KEY = "button_remap";
 
     private RemoteKeys() { }
 
@@ -91,6 +93,24 @@ final class RemoteKeys {
         if (info == null) return;
         info.flags &= ~AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS;
         service.setServiceInfo(info);
+    }
+
+    /** Set or clear the filter flag at runtime; applyKeyFilter can only clear it. */
+    static void setKeyFilter(AccessibilityService service, boolean keyFilter) {
+        AccessibilityServiceInfo info = service.getServiceInfo();
+        if (info == null) return;
+        if (keyFilter) {
+            info.flags |= AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS;
+        } else {
+            info.flags &= ~AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS;
+        }
+        service.setServiceInfo(info);
+    }
+
+    /** button_remap master switch, off by default. */
+    static boolean buttonRemapEnabled(Context ctx) {
+        return ctx.getSharedPreferences(Config.SETTINGS_NAME, Context.MODE_PRIVATE)
+                .getBoolean(BUTTON_REMAP_KEY, false);
     }
 
     /**
@@ -202,6 +222,8 @@ final class RemoteKeys {
 
     private static final Map<String, Long> lastPressTimes = new HashMap<>();
     private static final long DOUBLE_CLICK_WINDOW_MS = 400;
+    /** Down time of each remapped button, so a second helper or a re-delivered UP is not a double click. */
+    private static final Map<String, Long> lastDownTimes = new HashMap<>();
 
     /**
      * Handles Mi and PatchWall button remapping configured in Launcher settings.
@@ -231,7 +253,13 @@ final class RemoteKeys {
             return false;
         }
 
+        if (event.getAction() == KeyEvent.ACTION_DOWN) {
+            lastDownTimes.put(prefKey, event.getDownTime());
+            return true;
+        }
         if (event.getAction() == KeyEvent.ACTION_UP && !event.isCanceled()) {
+            Long down = lastDownTimes.remove(prefKey);
+            if (down == null || down.longValue() != event.getDownTime()) return true;
             long now = System.currentTimeMillis();
             Long lastTime = lastPressTimes.get(prefKey);
             

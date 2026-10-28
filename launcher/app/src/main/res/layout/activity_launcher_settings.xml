@@ -102,6 +102,20 @@
             android:textSize="20sp" />
 
         <TextView
+            android:id="@+id/buttonRemapChoice"
+            style="@style/SettingsRow"
+            android:layout_marginTop="10dp" />
+
+        <TextView
+            android:id="@+id/remapHint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/remap_home_tip"
+            android:textColor="#FFACB8C1"
+            android:textSize="14sp" />
+
+        <TextView
             android:id="@+id/miButtonChoice"
             style="@style/SettingsRow"
             android:layout_marginTop="10dp" />
@@ -122,10 +136,16 @@
             android:layout_marginTop="10dp" />
 
         <TextView
+            android:id="@+id/volumeRepeatChoice"
+            style="@style/SettingsRow"
+            android:layout_marginTop="10dp" />
+
+        <TextView
+            android:id="@+id/volumeRepeatHint"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="@string/remap_home_tip"
+            android:text="@string/volume_repeat_hint"
             android:textColor="#FFACB8C1"
             android:textSize="14sp" />
 

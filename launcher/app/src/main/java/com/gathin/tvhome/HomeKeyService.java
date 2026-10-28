@@ -58,6 +58,16 @@ public class HomeKeyService extends AccessibilityService {
     private final Set<String> stockHome = new HashSet<>();
     /** Stops key filtering while a game controller is connected; null unless gamepad_passthrough and key_filter, or before the unlock. */
     private GamepadPassthrough gamepads;
+    /** volume_repeat: briefly drops key filtering while volume changes so the TV can ramp. */
+    private final VolumeRepeat volumeRepeat = new VolumeRepeat(this);
+    /** key_filter from config/theme; the button_remap master switch can turn filtering off at runtime. */
+    private boolean themeKeyFilter;
+    private boolean gamepadPassthrough;
+    private boolean listeningForPrefs;
+    private final SharedPreferences.OnSharedPreferenceChangeListener prefListener =
+            (prefs, key) -> {
+                if (RemoteKeys.BUTTON_REMAP_KEY.equals(key)) applyFilterState();
+            };
 
     @Override
     protected void onServiceConnected() {
@@ -95,6 +105,8 @@ public class HomeKeyService extends AccessibilityService {
     @Override
     public void onDestroy() {
         stopWaitingForUnlock();
+        stopListeningForPrefs();
+        volumeRepeat.destroy();
         if (gamepads != null) gamepads.stop();
         super.onDestroy();
     }
@@ -110,7 +122,10 @@ public class HomeKeyService extends AccessibilityService {
         settingsPanel = config.settingsKeyPanel;
         appKeys = RemoteKeys.parseAppKeys(config.appKeys);
         appScancodes = RemoteKeys.parseAppScancodes(config.appKeys);
+        themeKeyFilter = config.keyFilter;
+        gamepadPassthrough = config.gamepadPassthrough;
         RemoteKeys.applyKeyFilter(this, config.keyFilter);
+        applyFilterState();
         stockHome.clear();
         if (!config.stockHomeRedirect.isEmpty()) {
             Intent home = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).setPackage(config.stockHomeRedirect);
@@ -127,11 +142,35 @@ public class HomeKeyService extends AccessibilityService {
         if (!stockHome.isEmpty()) probeAtBoot();
         holdAppKeys = RemoteKeys.parseHoldAppKeys(config.appKeys);
         holdAppScancodes = RemoteKeys.parseHoldAppScancodes(config.appKeys);
-        // gamepad_passthrough, off by default. Only with key_filter on: off, the service never filters keys.
-        if (config.gamepadPassthrough && config.keyFilter && gamepads == null) {
+        listenForPrefs();
+    }
+
+    /** key_filter from the theme, held back by the button_remap master switch. */
+    private void applyFilterState() {
+        boolean filter = themeKeyFilter && RemoteKeys.buttonRemapEnabled(this);
+        RemoteKeys.setKeyFilter(this, filter);
+        volumeRepeat.onConfig(filter);
+        if (!filter && gamepads != null) {
+            gamepads.stop();
+            gamepads = null;
+        } else if (filter && gamepadPassthrough && gamepads == null) {
             gamepads = new GamepadPassthrough(this);
             gamepads.start();
         }
+    }
+
+    private void listenForPrefs() {
+        if (listeningForPrefs) return;
+        getSharedPreferences(Config.SETTINGS_NAME, MODE_PRIVATE)
+                .registerOnSharedPreferenceChangeListener(prefListener);
+        listeningForPrefs = true;
+    }
+
+    private void stopListeningForPrefs() {
+        if (!listeningForPrefs) return;
+        getSharedPreferences(Config.SETTINGS_NAME, MODE_PRIVATE)
+                .unregisterOnSharedPreferenceChangeListener(prefListener);
+        listeningForPrefs = false;
     }
 
     private boolean isSettingsKey(KeyEvent event) {
@@ -173,6 +212,8 @@ public class HomeKeyService extends AccessibilityService {
     /** Unbound by Android: the user turned the helper off, so Home doesn't put it back (ServiceRepair). */
     @Override
     public boolean onUnbind(Intent intent) {
+        stopListeningForPrefs();
+        volumeRepeat.destroy();
         if (repairRecord) ServiceRepair.disconnected(this, getClass());
         return super.onUnbind(intent);
     }
@@ -235,5 +276,6 @@ public class HomeKeyService extends AccessibilityService {
 
     @Override
     public void onInterrupt() {
+        volumeRepeat.destroy();
     }
 }

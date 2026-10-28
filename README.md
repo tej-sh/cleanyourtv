@@ -542,8 +542,13 @@ and a wallpaper.
   - **Wallpaper**: one picture from the theme's collection (or its `wallpaper.jpg`), **None**, or **Theme
     default**. A pick holds that picture and stops the rotation until you choose Theme default, press
     Follow theme, or push the theme again.
+  - **Button remap:** master switch for the rows below, off by default. **Remap buttons** On or Off;
+    **Mi button**, **Mi button (Double)**, **PatchWall button** and **PatchWall button (Double)** choose what
+    the remote's spare buttons do, and are greyed out while remapping is off.
   - **Animations** on or off, and **Advanced effects** (tile lift, icon zoom and smooth ambient-colour
     transitions; they may use more memory) once animations are on.
+  - **Volume long-press repeat** On or Off (with Button remap on): briefly stops key filtering when the
+    volume changes so the TV's own long-press repeat can ramp; the remapped buttons pause for those seconds.
   - **Follow theme (reset on-TV choices)**, which clears every choice above. Pushing or resetting a theme
     clears them too.
   - **Choose default home** opens Android's home picker, and **TV system settings** the TV's own settings

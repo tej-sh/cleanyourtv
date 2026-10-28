@@ -2,14 +2,22 @@ package com.gathin.tvhome;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.Dialog;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.util.DisplayMetrics;
 import android.view.View;
+import android.view.ViewGroup;
+import android.view.Window;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -21,6 +29,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.IntConsumer;
 
 /** Remote-friendly settings owned by the launcher; system settings stay one row away. */
 public final class LauncherSettingsActivity extends Activity {
@@ -31,12 +40,16 @@ public final class LauncherSettingsActivity extends Activity {
     private static final int[] DOCK_OPACITIES = {100, 70, 50, 30};
     private final TextView[] dockChoices = new TextView[DOCK_OPACITIES.length];
     private TextView wallpaperChoice;
+    private TextView buttonRemapChoice;
     private TextView miButtonChoice;
     private TextView miButtonDoubleChoice;
     private TextView patchwallButtonChoice;
     private TextView patchwallButtonDoubleChoice;
     private TextView animationsChoice;
     private TextView advancedChoice;
+    private TextView volumeRepeatChoice;
+    private TextView remapHint;
+    private TextView volumeRepeatHint;
     private TextView followThemeChoice;
     private int columns;
     private int rowsBelowDock;
@@ -107,6 +120,13 @@ public final class LauncherSettingsActivity extends Activity {
         }
         wallpaperChoice = findViewById(R.id.wallpaperChoice);
         wallpaperChoice.setOnClickListener(v -> showWallpaperPicker());
+        buttonRemapChoice = findViewById(R.id.buttonRemapChoice);
+        buttonRemapChoice.setOnClickListener(v -> {
+            choices.edit().putBoolean(RemoteKeys.BUTTON_REMAP_KEY,
+                    !choices.getBoolean(RemoteKeys.BUTTON_REMAP_KEY, false)).apply();
+            changed();
+            refresh();
+        });
         miButtonChoice = findViewById(R.id.miButtonChoice);
         miButtonChoice.setOnClickListener(v -> showButtonRemapPicker(
                 RemoteKeys.MI_BUTTON_KEY, RemoteKeys.ACTION_HOME, R.string.mi_button_title));
@@ -141,12 +161,23 @@ public final class LauncherSettingsActivity extends Activity {
                         .show();
             }
         });
+        remapHint = findViewById(R.id.remapHint);
+        volumeRepeatHint = findViewById(R.id.volumeRepeatHint);
+        volumeRepeatChoice = findViewById(R.id.volumeRepeatChoice);
+        volumeRepeatChoice.setOnClickListener(v -> {
+            choices.edit().putBoolean(VolumeRepeat.PREF_ENABLED,
+                    !choices.getBoolean(VolumeRepeat.PREF_ENABLED, true)).apply();
+            changed();
+            refresh();
+        });
         followThemeChoice = findViewById(R.id.followThemeChoice);
         followThemeChoice.setOnClickListener(v -> {
             if (!hasOnTvChoices()) return;
             choices.edit().remove("columns").remove(Config.ROWS_BELOW_DOCK_KEY).remove("animations")
                     .remove("advanced_effects").remove(Config.WALLPAPER_CHOICE_KEY)
                     .remove(Config.DOCK_OPACITY_KEY)
+                    .remove(RemoteKeys.BUTTON_REMAP_KEY)
+                    .remove(VolumeRepeat.PREF_ENABLED)
                     .remove(RemoteKeys.MI_BUTTON_KEY)
                     .remove(RemoteKeys.MI_BUTTON_KEY + "_double")
                     .remove(RemoteKeys.PATCHWALL_BUTTON_KEY)
@@ -187,32 +218,35 @@ public final class LauncherSettingsActivity extends Activity {
                 getString(R.string.remap_action_app),
                 getString(R.string.remap_action_none)
         };
+        Drawable[] icons = {
+                getDrawable(R.drawable.ic_home_settings),
+                getDrawable(R.drawable.ic_clear_cache),
+                getDrawable(R.drawable.ic_wifi),
+                getDrawable(R.drawable.ic_remap_kill),
+                getDrawable(R.drawable.ic_apps),
+                getDrawable(R.drawable.ic_remap_off)
+        };
         int checked = RemoteKeys.ACTION_HOME.equals(current) ? 0
                 : RemoteKeys.ACTION_CLEANUP.equals(current) ? 1
                 : RemoteKeys.ACTION_WIFI.equals(current) ? 2
                 : RemoteKeys.ACTION_KILL_FG.equals(current) ? 3
                 : current != null && current.startsWith(RemoteKeys.ACTION_APP_PREFIX) ? 4
                 : 5;
-        new AlertDialog.Builder(this)
-                .setTitle(titleRes)
-                .setSingleChoiceItems(options, checked, (dialog, which) -> {
-                    dialog.dismiss();
-                    if (which == 0) {
-                        saveButtonRemap(prefKey, RemoteKeys.ACTION_HOME);
-                    } else if (which == 1) {
-                        saveButtonRemap(prefKey, RemoteKeys.ACTION_CLEANUP);
-                    } else if (which == 2) {
-                        saveButtonRemap(prefKey, RemoteKeys.ACTION_WIFI);
-                    } else if (which == 3) {
-                        saveButtonRemap(prefKey, RemoteKeys.ACTION_KILL_FG);
-                    } else if (which == 4) {
-                        showAppPickerForButton(prefKey);
-                    } else {
-                        saveButtonRemap(prefKey, RemoteKeys.ACTION_NONE);
-                    }
-                })
-                .setNegativeButton(android.R.string.cancel, null)
-                .show();
+        showRemapGrid(titleRes, options, icons, checked, which -> {
+            if (which == 0) {
+                saveButtonRemap(prefKey, RemoteKeys.ACTION_HOME);
+            } else if (which == 1) {
+                saveButtonRemap(prefKey, RemoteKeys.ACTION_CLEANUP);
+            } else if (which == 2) {
+                saveButtonRemap(prefKey, RemoteKeys.ACTION_WIFI);
+            } else if (which == 3) {
+                saveButtonRemap(prefKey, RemoteKeys.ACTION_KILL_FG);
+            } else if (which == 4) {
+                showAppPickerForButton(prefKey);
+            } else {
+                saveButtonRemap(prefKey, RemoteKeys.ACTION_NONE);
+            }
+        });
     }
 
     private void showAppPickerForButton(String prefKey) {
@@ -239,7 +273,15 @@ public final class LauncherSettingsActivity extends Activity {
         Collections.sort(sorted, (a, b) -> collator.compare(a.getValue(), b.getValue()));
 
         String[] labels = new String[sorted.size()];
-        for (int i = 0; i < sorted.size(); i++) labels[i] = sorted.get(i).getValue();
+        Drawable[] icons = new Drawable[sorted.size()];
+        for (int i = 0; i < sorted.size(); i++) {
+            labels[i] = sorted.get(i).getValue();
+            try {
+                icons[i] = pm.getApplicationIcon(sorted.get(i).getKey());
+            } catch (PackageManager.NameNotFoundException ignored) {
+                icons[i] = getDrawable(R.drawable.ic_apps);
+            }
+        }
 
         String current = choices.getString(prefKey, "");
         String currentPkg = current.startsWith(RemoteKeys.ACTION_APP_PREFIX)
@@ -251,15 +293,69 @@ public final class LauncherSettingsActivity extends Activity {
                 break;
             }
         }
+        showRemapGrid(R.string.remap_pick_app, labels, icons, checked, which ->
+                saveButtonRemap(prefKey, RemoteKeys.ACTION_APP_PREFIX + sorted.get(which).getKey()));
+    }
 
-        new AlertDialog.Builder(this)
-                .setTitle(R.string.remap_pick_app)
-                .setSingleChoiceItems(labels, checked, (dialog, which) -> {
-                    dialog.dismiss();
-                    saveButtonRemap(prefKey, RemoteKeys.ACTION_APP_PREFIX + sorted.get(which).getKey());
-                })
-                .setNegativeButton(android.R.string.cancel, null)
-                .show();
+    /** Grid picker in the Launcher settings colours: dark tiles, white text, green focus. */
+    private void showRemapGrid(int titleRes, String[] labels, Drawable[] icons, int checked,
+            IntConsumer onPick) {
+        Dialog dialog = new Dialog(this);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        dialog.setContentView(R.layout.dialog_remap_grid);
+        ((TextView) dialog.findViewById(R.id.remapGridTitle)).setText(titleRes);
+        LinearLayout rows = dialog.findViewById(R.id.remapGridRows);
+        View focus = null;
+        View first = null;
+        LinearLayout row = null;
+        int columns = 3;
+        for (int i = 0; i < labels.length; i++) {
+            if (i % columns == 0) {
+                row = new LinearLayout(this);
+                row.setOrientation(LinearLayout.HORIZONTAL);
+                rows.addView(row, new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT));
+            }
+            View tile = getLayoutInflater().inflate(R.layout.item_remap_tile, row, false);
+            ((ImageView) tile.findViewById(R.id.remapIcon)).setImageDrawable(icons[i]);
+            ((TextView) tile.findViewById(R.id.remapLabel)).setText(labels[i]);
+            tile.setSelected(i == checked);
+            final int which = i;
+            tile.setOnClickListener(v -> {
+                dialog.dismiss();
+                onPick.accept(which);
+            });
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(112), 1f);
+            lp.setMargins(dp(6), dp(6), dp(6), dp(6));
+            row.addView(tile, lp);
+            if (first == null) first = tile;
+            if (i == checked) focus = tile;
+        }
+        if (row != null) {
+            for (int i = labels.length % columns; i < columns && i > 0; i++) {
+                View spacer = new View(this);
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(112), 1f);
+                lp.setMargins(dp(6), dp(6), dp(6), dp(6));
+                row.addView(spacer, lp);
+            }
+        }
+        dialog.findViewById(R.id.remapGridCancel).setOnClickListener(v -> dialog.dismiss());
+        dialog.setOnShowListener(d -> {
+            Window window = dialog.getWindow();
+            if (window == null) return;
+            window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+            DisplayMetrics metrics = getResources().getDisplayMetrics();
+            window.setLayout(Math.round(metrics.widthPixels * 0.78f),
+                    ViewGroup.LayoutParams.WRAP_CONTENT);
+        });
+        dialog.show();
+        if (focus != null) focus.requestFocus();
+        else if (first != null) first.requestFocus();
+    }
+
+    private int dp(int value) {
+        return Math.round(value * getResources().getDisplayMetrics().density);
     }
 
     private void saveButtonRemap(String prefKey, String action) {
@@ -368,6 +464,15 @@ public final class LauncherSettingsActivity extends Activity {
                 getString(advancedEffects ? R.string.on : R.string.off)));
         advancedChoice.setEnabled(animations);
         advancedChoice.setAlpha(animations ? 1f : 0.5f);
+        boolean remap = choices.getBoolean(RemoteKeys.BUTTON_REMAP_KEY, false);
+        buttonRemapChoice.setText(getString(R.string.button_remap_state,
+                getString(remap ? R.string.on : R.string.off)));
+        for (TextView row : new TextView[]{miButtonChoice, miButtonDoubleChoice,
+                patchwallButtonChoice, patchwallButtonDoubleChoice, volumeRepeatChoice,
+                remapHint, volumeRepeatHint}) {
+            row.setEnabled(remap);
+            row.setAlpha(remap ? 1f : 0.5f);
+        }
         String wallpaperCurrent = choices.getString(Config.WALLPAPER_CHOICE_KEY, null);
         wallpaperChoice.setText(getString(R.string.wallpaper_state,
                 "none".equals(wallpaperCurrent) ? getString(R.string.wallpaper_none)
@@ -381,6 +486,8 @@ public final class LauncherSettingsActivity extends Activity {
         patchwallButtonChoice.setText(getString(R.string.patchwall_button_state, formatRemapState(pwCurrent)));
         String pwDoubleCurrent = choices.getString(RemoteKeys.PATCHWALL_BUTTON_KEY + "_double", RemoteKeys.ACTION_NONE);
         patchwallButtonDoubleChoice.setText(getString(R.string.patchwall_button_double_state, formatRemapState(pwDoubleCurrent)));
+        volumeRepeatChoice.setText(getString(R.string.volume_repeat_state,
+                getString(choices.getBoolean(VolumeRepeat.PREF_ENABLED, true) ? R.string.on : R.string.off)));
         followThemeChoice.setSelected(!hasOnTvChoices());
     }
 
@@ -389,7 +496,8 @@ public final class LauncherSettingsActivity extends Activity {
                 || choices.contains("animations") || choices.contains("advanced_effects")
                 || choices.contains(Config.WALLPAPER_CHOICE_KEY) || choices.contains(Config.DOCK_OPACITY_KEY)
                 || choices.contains(RemoteKeys.MI_BUTTON_KEY) || choices.contains(RemoteKeys.MI_BUTTON_KEY + "_double")
-                || choices.contains(RemoteKeys.PATCHWALL_BUTTON_KEY) || choices.contains(RemoteKeys.PATCHWALL_BUTTON_KEY + "_double");
+                || choices.contains(RemoteKeys.PATCHWALL_BUTTON_KEY) || choices.contains(RemoteKeys.PATCHWALL_BUTTON_KEY + "_double")
+                || choices.contains(VolumeRepeat.PREF_ENABLED) || choices.contains(RemoteKeys.BUTTON_REMAP_KEY);
     }
 
     private void open(Intent intent) {

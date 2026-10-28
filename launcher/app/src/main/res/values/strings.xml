@@ -58,6 +58,8 @@
     <string name="advanced_effects">Advanced effects</string>
     <string name="advanced_effects_state">Advanced effects: %1$s</string>
     <string name="advanced_effects_warning">Adds a lifted tile, icon zoom and smooth colour transitions. May increase memory use; the actual difference depends on your TV.</string>
+    <string name="volume_repeat_state">Volume long-press repeat: %1$s</string>
+    <string name="volume_repeat_hint">On by default when Button remap is on. Press Volume Up or Down once, then hold to keep ramping; the remapped buttons pause for a few seconds while the TV repeats. Turn off if your TV already ramps.</string>
     <string name="follow_theme">Follow theme (reset on-TV choices)</string>
     <string name="follow_theme_hint">Uses the current theme or built-in layout and motion settings. Pushing or resetting a theme also clears your on-TV choices.</string>
     <string name="tv_settings">TV system settings</string>
@@ -68,6 +70,7 @@
     <string name="killing_background_processes">Killing background processes…</string>
     <string name="clearing_cache">Clearing cache…</string>
     <string name="button_remap_label">Button remap</string>
+    <string name="button_remap_state">Remap buttons: %1$s</string>
     <string name="mi_button_state">Mi button: %1$s</string>
     <string name="mi_button_double_state">Mi button (Double): %1$s</string>
     <string name="patchwall_button_state">PatchWall button: %1$s</string>
@@ -83,7 +86,7 @@
     <string name="remap_action_app">Open app…</string>
     <string name="remap_action_none">Off (default)</string>
     <string name="remap_pick_app">Choose app</string>
-    <string name="remap_home_tip">It is better to keep at least one button set to Open Home so you can always reach the launcher.</string>
+    <string name="remap_home_tip">Suggested: keep at least one button set to Open Home so you can always reach the launcher.</string>
     <string name="quick_picture">Display</string>
     <string name="quick_network">Network</string>
     <string name="quick_apps">Apps</string>
