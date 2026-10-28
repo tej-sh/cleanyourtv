@@ -186,18 +186,16 @@ final class RemoteKeys {
     static final String ACTION_NONE = "none";
     static final String ACTION_APP_PREFIX = "app:";
 
-    /** True if the key event is the Xiaomi Mi / Home button (KEYCODE_ALL_APPS = 284). */
+    /** True if the key event is the Mi button (e.g. keycode 192 or 284). */
     static boolean isMiButton(KeyEvent event) {
-        return event.getKeyCode() == KeyEvent.KEYCODE_ALL_APPS;
+        int code = event.getKeyCode();
+        return code == 192 || code == 284 || code == KeyEvent.KEYCODE_ALL_APPS;
     }
 
-    /**
-     * True if the key event is the Xiaomi PatchWall button.
-     * Xiaomi remotes emit KEYCODE_BUTTON_5 (192) on newer sticks/TVs or scancode 382 on others.
-     */
+    /** True if the key event is the PatchWall / Home button (e.g. keycode 3). */
     static boolean isPatchWallButton(KeyEvent event) {
         int code = event.getKeyCode();
-        return code == KeyEvent.KEYCODE_BUTTON_5 || event.getScanCode() == 382;
+        return code == 3 || code == KeyEvent.KEYCODE_BUTTON_5 || code == 170;
     }
 
     /**
