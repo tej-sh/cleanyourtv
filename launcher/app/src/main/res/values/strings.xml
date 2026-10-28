@@ -78,6 +78,8 @@
     <string name="patchwall_button_title">PatchWall button</string>
     <string name="remap_action_home">Open Home</string>
     <string name="remap_action_cleanup">Clean up</string>
+    <string name="remap_action_wifi">Wi-Fi settings</string>
+    <string name="remap_action_bluetooth">Bluetooth settings</string>
     <string name="remap_action_app">Open app…</string>
     <string name="remap_action_none">Off (default)</string>
     <string name="remap_pick_app">Choose app</string>

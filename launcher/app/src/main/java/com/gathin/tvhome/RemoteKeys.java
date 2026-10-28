@@ -183,6 +183,8 @@ final class RemoteKeys {
     static final String PATCHWALL_BUTTON_KEY = "patchwall_button_action";
     static final String ACTION_HOME = "home";
     static final String ACTION_CLEANUP = "cleanup";
+    static final String ACTION_WIFI = "wifi";
+    static final String ACTION_BLUETOOTH = "bluetooth";
     static final String ACTION_NONE = "none";
     static final String ACTION_APP_PREFIX = "app:";
 
@@ -270,6 +272,20 @@ final class RemoteKeys {
             ctx.startActivity(home);
         } else if (ACTION_CLEANUP.equals(action)) {
             Cleanup.run(ctx);
+        } else if (ACTION_WIFI.equals(action)) {
+            try {
+                ctx.startActivity(new Intent(android.provider.Settings.ACTION_WIFI_SETTINGS)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+            } catch (Exception ignored) {
+                ctx.startActivity(SystemSettings.intent(ctx, android.provider.Settings.ACTION_SETTINGS));
+            }
+        } else if (ACTION_BLUETOOTH.equals(action)) {
+            try {
+                ctx.startActivity(new Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+            } catch (Exception ignored) {
+                ctx.startActivity(SystemSettings.intent(ctx, android.provider.Settings.ACTION_SETTINGS));
+            }
         } else if (action.startsWith(ACTION_APP_PREFIX)) {
             String pkg = action.substring(ACTION_APP_PREFIX.length()).trim();
             if (!pkg.isEmpty()) launch(ctx, pkg);
