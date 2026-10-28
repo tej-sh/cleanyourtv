@@ -61,6 +61,10 @@
     <string name="follow_theme">Follow theme (reset on-TV choices)</string>
     <string name="follow_theme_hint">Uses the current theme or built-in layout and motion settings. Pushing or resetting a theme also clears your on-TV choices.</string>
     <string name="tv_settings">TV system settings</string>
+    <string name="clear_cache_tile">Clear cache</string>
+    <string name="clear_all_caches">Clear all app caches</string>
+    <string name="clearing_caches">Clearing caches…</string>
+    <string name="caches_cleared">Caches cleared</string>
     <string name="quick_picture">Display</string>
     <string name="quick_network">Network</string>
     <string name="quick_apps">Apps</string>
