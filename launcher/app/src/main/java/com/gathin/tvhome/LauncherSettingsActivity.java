@@ -5,6 +5,8 @@ import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.view.View;
@@ -13,7 +15,12 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.File;
+import java.text.Collator;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /** Remote-friendly settings owned by the launcher; system settings stay one row away. */
 public final class LauncherSettingsActivity extends Activity {
@@ -24,6 +31,8 @@ public final class LauncherSettingsActivity extends Activity {
     private static final int[] DOCK_OPACITIES = {100, 70, 50, 30};
     private final TextView[] dockChoices = new TextView[DOCK_OPACITIES.length];
     private TextView wallpaperChoice;
+    private TextView miButtonChoice;
+    private TextView patchwallButtonChoice;
     private TextView animationsChoice;
     private TextView advancedChoice;
     private TextView followThemeChoice;
@@ -96,6 +105,12 @@ public final class LauncherSettingsActivity extends Activity {
         }
         wallpaperChoice = findViewById(R.id.wallpaperChoice);
         wallpaperChoice.setOnClickListener(v -> showWallpaperPicker());
+        miButtonChoice = findViewById(R.id.miButtonChoice);
+        miButtonChoice.setOnClickListener(v -> showButtonRemapPicker(
+                RemoteKeys.MI_BUTTON_KEY, RemoteKeys.ACTION_HOME, R.string.mi_button_title));
+        patchwallButtonChoice = findViewById(R.id.patchwallButtonChoice);
+        patchwallButtonChoice.setOnClickListener(v -> showButtonRemapPicker(
+                RemoteKeys.PATCHWALL_BUTTON_KEY, RemoteKeys.ACTION_NONE, R.string.patchwall_button_title));
         animationsChoice = findViewById(R.id.animationsChoice);
         animationsChoice.setOnClickListener(v -> {
             animations = !animations;
@@ -123,7 +138,9 @@ public final class LauncherSettingsActivity extends Activity {
             if (!hasOnTvChoices()) return;
             choices.edit().remove("columns").remove(Config.ROWS_BELOW_DOCK_KEY).remove("animations")
                     .remove("advanced_effects").remove(Config.WALLPAPER_CHOICE_KEY)
-                    .remove(Config.DOCK_OPACITY_KEY).commit();
+                    .remove(Config.DOCK_OPACITY_KEY)
+                    .remove(RemoteKeys.MI_BUTTON_KEY)
+                    .remove(RemoteKeys.PATCHWALL_BUTTON_KEY).commit();
             Config current = Config.load(this);
             columns = current.columns;
             rowsBelowDock = current.rowsBelowDock;
@@ -148,6 +165,110 @@ public final class LauncherSettingsActivity extends Activity {
         LinearLayout row = (LinearLayout) views[0].getParent();
         row.removeAllViews();
         for (int i = views.length - 1; i >= 0; i--) row.addView(views[i]);
+    }
+
+    private void showButtonRemapPicker(String prefKey, String defaultAction, int titleRes) {
+        String current = choices.getString(prefKey, defaultAction);
+        String[] options = {
+                getString(R.string.remap_action_home),
+                getString(R.string.remap_action_cleanup),
+                getString(R.string.remap_action_app),
+                getString(R.string.remap_action_none)
+        };
+        int checked = RemoteKeys.ACTION_HOME.equals(current) ? 0
+                : RemoteKeys.ACTION_CLEANUP.equals(current) ? 1
+                : current != null && current.startsWith(RemoteKeys.ACTION_APP_PREFIX) ? 2
+                : 3;
+        new AlertDialog.Builder(this)
+                .setTitle(titleRes)
+                .setSingleChoiceItems(options, checked, (dialog, which) -> {
+                    dialog.dismiss();
+                    if (which == 0) {
+                        saveButtonRemap(prefKey, RemoteKeys.ACTION_HOME);
+                    } else if (which == 1) {
+                        saveButtonRemap(prefKey, RemoteKeys.ACTION_CLEANUP);
+                    } else if (which == 2) {
+                        showAppPickerForButton(prefKey);
+                    } else {
+                        saveButtonRemap(prefKey, RemoteKeys.ACTION_NONE);
+                    }
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    private void showAppPickerForButton(String prefKey) {
+        PackageManager pm = getPackageManager();
+        Map<String, String> apps = new LinkedHashMap<>();
+        Intent leanback = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER);
+        for (ResolveInfo ri : pm.queryIntentActivities(leanback, 0)) {
+            String pkg = ri.activityInfo.packageName;
+            if (!getPackageName().equals(pkg)) {
+                CharSequence label = ri.loadLabel(pm);
+                apps.put(pkg, label != null ? label.toString() : pkg);
+            }
+        }
+        Intent main = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER);
+        for (ResolveInfo ri : pm.queryIntentActivities(main, 0)) {
+            String pkg = ri.activityInfo.packageName;
+            if (!getPackageName().equals(pkg) && !apps.containsKey(pkg)) {
+                CharSequence label = ri.loadLabel(pm);
+                apps.put(pkg, label != null ? label.toString() : pkg);
+            }
+        }
+        List<Map.Entry<String, String>> sorted = new ArrayList<>(apps.entrySet());
+        Collator collator = Collator.getInstance();
+        Collections.sort(sorted, (a, b) -> collator.compare(a.getValue(), b.getValue()));
+
+        String[] labels = new String[sorted.size()];
+        for (int i = 0; i < sorted.size(); i++) labels[i] = sorted.get(i).getValue();
+
+        String current = choices.getString(prefKey, "");
+        String currentPkg = current.startsWith(RemoteKeys.ACTION_APP_PREFIX)
+                ? current.substring(RemoteKeys.ACTION_APP_PREFIX.length()) : "";
+        int checked = -1;
+        for (int i = 0; i < sorted.size(); i++) {
+            if (sorted.get(i).getKey().equals(currentPkg)) {
+                checked = i;
+                break;
+            }
+        }
+
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.remap_pick_app)
+                .setSingleChoiceItems(labels, checked, (dialog, which) -> {
+                    dialog.dismiss();
+                    saveButtonRemap(prefKey, RemoteKeys.ACTION_APP_PREFIX + sorted.get(which).getKey());
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    private void saveButtonRemap(String prefKey, String action) {
+        choices.edit().putString(prefKey, action).apply();
+        changed();
+        refresh();
+        String miAction = choices.getString(RemoteKeys.MI_BUTTON_KEY, RemoteKeys.ACTION_HOME);
+        String pwAction = choices.getString(RemoteKeys.PATCHWALL_BUTTON_KEY, RemoteKeys.ACTION_NONE);
+        if (!RemoteKeys.ACTION_HOME.equals(miAction) && !RemoteKeys.ACTION_HOME.equals(pwAction)) {
+            Toast.makeText(this, R.string.remap_home_tip, Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private String formatRemapState(String action) {
+        if (RemoteKeys.ACTION_HOME.equals(action)) return getString(R.string.remap_action_home);
+        if (RemoteKeys.ACTION_CLEANUP.equals(action)) return getString(R.string.remap_action_cleanup);
+        if (action != null && action.startsWith(RemoteKeys.ACTION_APP_PREFIX)) {
+            String pkg = action.substring(RemoteKeys.ACTION_APP_PREFIX.length());
+            PackageManager pm = getPackageManager();
+            try {
+                CharSequence label = pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0));
+                if (label != null) return label.toString();
+            } catch (PackageManager.NameNotFoundException ignored) {
+            }
+            return pkg;
+        }
+        return getString(R.string.remap_action_none);
     }
 
     private void showWallpaperPicker() {
@@ -232,13 +353,18 @@ public final class LauncherSettingsActivity extends Activity {
                 "none".equals(wallpaperCurrent) ? getString(R.string.wallpaper_none)
                         : wallpaperCurrent != null ? wallpaperCurrent
                         : getString(R.string.wallpaper_theme_default)));
+        String miCurrent = choices.getString(RemoteKeys.MI_BUTTON_KEY, RemoteKeys.ACTION_HOME);
+        miButtonChoice.setText(getString(R.string.mi_button_state, formatRemapState(miCurrent)));
+        String pwCurrent = choices.getString(RemoteKeys.PATCHWALL_BUTTON_KEY, RemoteKeys.ACTION_NONE);
+        patchwallButtonChoice.setText(getString(R.string.patchwall_button_state, formatRemapState(pwCurrent)));
         followThemeChoice.setSelected(!hasOnTvChoices());
     }
 
     private boolean hasOnTvChoices() {
         return choices.contains("columns") || choices.contains(Config.ROWS_BELOW_DOCK_KEY)
                 || choices.contains("animations") || choices.contains("advanced_effects")
-                || choices.contains(Config.WALLPAPER_CHOICE_KEY) || choices.contains(Config.DOCK_OPACITY_KEY);
+                || choices.contains(Config.WALLPAPER_CHOICE_KEY) || choices.contains(Config.DOCK_OPACITY_KEY)
+                || choices.contains(RemoteKeys.MI_BUTTON_KEY) || choices.contains(RemoteKeys.PATCHWALL_BUTTON_KEY);
     }
 
     private void open(Intent intent) {

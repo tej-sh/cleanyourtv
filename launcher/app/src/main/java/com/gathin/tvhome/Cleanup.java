@@ -13,9 +13,10 @@ final class Cleanup {
     static void run(Context context) {
         final Context app = context.getApplicationContext();
         final Handler ui = new Handler(Looper.getMainLooper());
-        Toast.makeText(app, R.string.cleaning_up, Toast.LENGTH_SHORT).show();
+        ui.post(() -> Toast.makeText(app, R.string.killing_background_processes, Toast.LENGTH_SHORT).show());
         new Thread(() -> {
             BackgroundKiller.killAll(app);
+            ui.post(() -> Toast.makeText(app, R.string.clearing_cache, Toast.LENGTH_SHORT).show());
             String err = CacheCleaner.clear(app);
             final String msg = err == null ? app.getString(R.string.cleaned_up)
                     : app.getString(R.string.cleanup_partial, err);

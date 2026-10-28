@@ -178,4 +178,66 @@ final class RemoteKeys {
         } catch (ActivityNotFoundException ignored) {
         }
     }
+
+    static final String MI_BUTTON_KEY = "mi_button_action";
+    static final String PATCHWALL_BUTTON_KEY = "patchwall_button_action";
+    static final String ACTION_HOME = "home";
+    static final String ACTION_CLEANUP = "cleanup";
+    static final String ACTION_NONE = "none";
+    static final String ACTION_APP_PREFIX = "app:";
+
+    /** True if the key event is the Xiaomi Mi / Home button (KEYCODE_ALL_APPS = 284). */
+    static boolean isMiButton(KeyEvent event) {
+        return event.getKeyCode() == KeyEvent.KEYCODE_ALL_APPS;
+    }
+
+    /**
+     * True if the key event is the Xiaomi PatchWall button.
+     * Xiaomi remotes emit KEYCODE_BUTTON_5 (192) on newer sticks/TVs or scancode 382 on others.
+     */
+    static boolean isPatchWallButton(KeyEvent event) {
+        int code = event.getKeyCode();
+        return code == KeyEvent.KEYCODE_BUTTON_5 || event.getScanCode() == 382;
+    }
+
+    /**
+     * Handles Mi and PatchWall button remapping configured in Launcher settings.
+     * Returns true if the event was consumed by a user remap, false to fall back to default behaviour.
+     */
+    static boolean handleRemappedButton(Context ctx, KeyEvent event) {
+        String prefKey;
+        String defaultAction;
+        if (isMiButton(event)) {
+            prefKey = MI_BUTTON_KEY;
+            defaultAction = ACTION_HOME;
+        } else if (isPatchWallButton(event)) {
+            prefKey = PATCHWALL_BUTTON_KEY;
+            defaultAction = ACTION_NONE;
+        } else {
+            return false;
+        }
+
+        android.content.SharedPreferences prefs =
+                ctx.getSharedPreferences(Config.SETTINGS_NAME, Context.MODE_PRIVATE);
+        String action = prefs.getString(prefKey, defaultAction);
+        if (action == null || ACTION_NONE.equals(action)) {
+            return false;
+        }
+
+        if (event.getAction() == KeyEvent.ACTION_UP && !event.isCanceled()) {
+            if (ACTION_HOME.equals(action)) {
+                Intent home = new Intent(Intent.ACTION_MAIN)
+                        .addCategory(Intent.CATEGORY_HOME)
+                        .setPackage(ctx.getPackageName())
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
+                ctx.startActivity(home);
+            } else if (ACTION_CLEANUP.equals(action)) {
+                Cleanup.run(ctx);
+            } else if (action.startsWith(ACTION_APP_PREFIX)) {
+                String pkg = action.substring(ACTION_APP_PREFIX.length()).trim();
+                if (!pkg.isEmpty()) launch(ctx, pkg);
+            }
+        }
+        return true;
+    }
 }
