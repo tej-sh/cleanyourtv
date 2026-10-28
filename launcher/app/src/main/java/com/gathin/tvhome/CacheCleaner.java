@@ -20,15 +20,28 @@ final class CacheCleaner {
     /** Returns null on success, else a short reason. */
     static String clear(Context app) {
         File tmp = new File(app.getCacheDir(), "clear.tmp");
-        try (FileOutputStream out = new FileOutputStream(tmp)) {
+        // Ask for a little less than the limit: free space shifts between the query and the allocation
+        // (the system rejected a request 12 KB over), so retry with a larger safety margin.
+        long[] margins = {16L << 20, 128L << 20};
+        String reason = "unknown";
+        try {
             StorageManager sm = app.getSystemService(StorageManager.class);
-            sm.allocateBytes(out.getFD(), sm.getAllocatableBytes(StorageManager.UUID_DEFAULT));
-            return null;
+            long room = sm.getAllocatableBytes(StorageManager.UUID_DEFAULT);
+            for (long margin : margins) {
+                try (FileOutputStream out = new FileOutputStream(tmp)) {
+                    sm.allocateBytes(out.getFD(), Math.max(room - margin, 0));
+                    return null;
+                } catch (IOException e) {
+                    android.util.Log.w("CacheCleaner", "clear failed", e);
+                    reason = e.getClass().getSimpleName() + ": " + e.getMessage();
+                } finally {
+                    tmp.delete();
+                }
+            }
         } catch (IOException | RuntimeException e) {
             android.util.Log.w("CacheCleaner", "clear failed", e);
-            return e.getClass().getSimpleName() + ": " + e.getMessage();
-        } finally {
-            tmp.delete();
+            reason = e.getClass().getSimpleName() + ": " + e.getMessage();
         }
+        return reason;
     }
 }
